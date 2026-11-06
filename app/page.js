@@ -1,69 +1,179 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+
+"use client";
+
+import { useState } from "react";
 
 export default function Home() {
+  const [text, setText] = useState("");
+  const [length, setLength] = useState("medium");
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSummarize() {
+    setError("");
+    setSummary("");
+
+    if (!text.trim()) {
+      setError("Please enter some text first.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/summarize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ text, length })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Something went wrong.");
+      }
+
+      setSummary(data.summary);
+
+    } catch (err) {
+      setError(err.message || "Unable to generate summary.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copySummary() {
+    try {
+      await navigator.clipboard.writeText(summary);
+    } catch {
+      setError("Unable to copy summary.");
+    }
+  }
+
+  function clearAll() {
+    setText("");
+    setSummary("");
+    setError("");
+  }
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>
-            To get started, edit the{" "}
-            <code className={styles.code}>page.js</code> file.
-          </h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
+    <main className="container">
+
+      <nav className="navbar">
+        <div className="logo">✦ SmartSummarizer</div>
+        <span className="nav-label">DEMO MODE</span>
+      </nav>
+
+      <section className="hero">
+        <div className="tag">YOUR TEXT SUMMARIZER</div>
+
+        <h1>
+          Turn Long Text Into
+          <span> Clear Insights.</span>
+        </h1>
+
+        <p>
+          Summarize articles, notes and documents
+          with our text summarization demo.
+        </p>
+      </section>
+
+      <section className="workspace">
+
+        <div className="panel">
+
+          <div className="panel-heading">
+            <h2>Enter Your Text</h2>
+            <span>{text.length}/12000</span>
+          </div>
+
+          <textarea
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Paste your article, notes or document here..."
+            maxLength={12000}
+            disabled={loading}
+          />
+
+          <div className="controls">
+
+            <div className="length-control">
+              <label htmlFor="length">Summary Length</label>
+
+              <select
+                id="length"
+                value={length}
+                onChange={e => setLength(e.target.value)}
+                disabled={loading}
+              >
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </div>
+
+            <button
+              className="clear-button"
+              onClick={clearAll}
+              disabled={loading}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+              Clear
+            </button>
+
+          </div>
+
+          <button
+            className="summarize-button"
+            onClick={handleSummarize}
+            disabled={loading}
           >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {loading ? "Generating..." : "✦ Generate Summary"}
+          </button>
+
+          {error && (
+            <div className="error-message" role="alert">
+              {error}
+            </div>
+          )}
+
         </div>
-      </main>
-    </div>
+
+        <div className="panel result-panel">
+
+          <div className="panel-heading">
+            <h2>Summary Result</h2>
+
+            {summary && (
+              <button
+                className="copy-button"
+                onClick={copySummary}
+              >
+                Copy
+              </button>
+            )}
+          </div>
+
+          <div className="summary-content" aria-live="polite">
+            {summary || "Your summary will appear here..."}
+          </div>
+
+          {summary && (
+            <p className="demo-note">
+              Demo mode: extractive summary, not AI-generated.
+            </p>
+          )}
+
+        </div>
+
+      </section>
+
+      <footer>
+        SmartSummarizer © 2026 | Built with Next.js
+      </footer>
+
+    </main>
   );
 }
